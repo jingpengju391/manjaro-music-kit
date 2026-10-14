@@ -1,0 +1,12 @@
+[Configuration]
+BackgroundMode=TERMINAL_BACKGROUND_TRANSPARENT
+BackgroundDarkness=0.20
+ColorBackground=#694252
+ColorForeground=#d8dee9
+FontName=Monospace 10
+MiscMenubarDefault=FALSE
+MiscToolbarDefault=FALSE
+MiscBordersDefault=FALSE
+MiscAlwaysShowTabs=FALSE
+MiscBell=FALSE
+ScrollingBar=TERMINAL_SCROLLBAR_NONE
