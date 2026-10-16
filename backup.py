@@ -1,4 +1,6 @@
 """Durable per-install file, setting and service-state backup."""
+import os
+import signal
 import datetime
 import json
 from pathlib import Path
@@ -54,8 +56,30 @@ class Backup:
         self.save()
 
 
+def close_widgets(manifest):
+    # Only stop this kit's own installed processes, never other music apps.
+    targets = {entry['path'] for entry in manifest['files']
+               if Path(entry['path']).name in ('spectrum-lines.py', 'playlist-widget.py', 'portable-player.py')}
+    launchers = [Path(entry['path']) for entry in manifest['files']
+                 if Path(entry['path']).name == 'music']
+    for launcher in launchers:
+        if launcher.is_file():
+            try:
+                subprocess.run([str(launcher), 'hide'], timeout=5, capture_output=True, check=False)
+            except (OSError, subprocess.TimeoutExpired): pass
+    for proc in Path('/proc').iterdir():
+        if not proc.name.isdigit(): continue
+        try:
+            if proc.stat().st_uid != os.getuid(): continue
+            argv = (proc/'cmdline').read_bytes().decode().split('\0')
+            if len(argv) > 1 and argv[1] in targets:
+                os.kill(int(proc.name), signal.SIGTERM)
+        except (OSError, UnicodeError): pass
+
+
 def restore(path):
     manifest = json.loads((path/'manifest.json').read_text())
+    close_widgets(manifest)
     for name in manifest['services']:
         systemctl('stop', name, check=False)
         systemctl('disable', name, check=False)
@@ -72,6 +96,8 @@ def restore(path):
         else:
             command = ['dconf', 'write', entry['path'], entry['value']] if entry['value'] else ['dconf', 'reset', entry['path']]
         subprocess.run(command, check=True)
+    builder = shutil.which('kbuildsycoca6') or shutil.which('kbuildsycoca5')
+    if builder: subprocess.run([builder], check=False, capture_output=True)
     systemctl('daemon-reload')
     for name, state in manifest['services'].items():
         if state['enabled'] in ('enabled', 'enabled-runtime'):

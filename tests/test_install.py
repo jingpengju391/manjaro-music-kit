@@ -33,6 +33,21 @@ class DetectionTests(unittest.TestCase):
 
 
 class BackupTests(unittest.TestCase):
+    def test_close_widgets_stops_only_recorded_script(self):
+        with tempfile.TemporaryDirectory() as folder:
+            script = Path(folder)/'playlist-widget.py'
+            script.write_text('import time; time.sleep(60)')
+            player = subprocess.Popen([sys.executable, str(script)])
+            unrelated = subprocess.Popen([sys.executable, '-c', 'import time; time.sleep(60)'])
+            try:
+                backup.close_widgets({'files': [{'path': str(script)}]})
+                player.wait(timeout=3)
+                self.assertIsNone(unrelated.poll())
+            finally:
+                for process in (player, unrelated):
+                    if process.poll() is None: process.terminate()
+                    process.wait(timeout=3)
+
     def test_restore_files_symlinks_settings_and_services(self):
         with tempfile.TemporaryDirectory() as folder:
             home = Path(folder)
