@@ -81,6 +81,7 @@ def main():
     if session not in ('x11', 'wayland'): raise SystemExit('请在已登录的图形桌面运行，不支持无桌面的 SSH/TTY 安装。')
     if not shutil.which('pacman'): raise SystemExit('此安装器面向使用 pacman 的 Manjaro / Arch Linux。')
     required = packages(backend)
+    if desktop == 'KDE Plasma' and session == 'wayland': required += ['gtk-layer-shell']
     if desktop == 'GNOME': required += ['glib2', 'dconf']
     if desktop == 'Xfce' and 'xfconf' not in required: required += ['xfconf']
     missing = subprocess.run(['pacman', '-T', *required], capture_output=True, text=True)
@@ -142,7 +143,8 @@ def main():
         raise
     print('安装完成。应用菜单 → 桌面音乐；歌曲放入 ~/Music。')
     print('一键恢复：bash install.sh --restore')
-    if backend == 'portable': print('此桌面使用兼容窗口：歌单与频谱同窗，可移动和调整尺寸；不强制置底、定位或无边框。')
+    if desktop == 'KDE Plasma' and session == 'wayland': print('KDE Wayland 使用右上角透明桌面组件，底层显示，无标题栏、不可拖拽。')
+    elif backend == 'portable': print('此桌面使用兼容窗口：歌单与频谱同窗，可移动和调整尺寸。')
 
 
 if __name__ == '__main__':

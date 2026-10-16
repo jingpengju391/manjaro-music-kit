@@ -44,7 +44,8 @@ bash install.sh --no-launch
 | 环境 | 自动选择的界面 | 窗口效果 | 快捷键 |
 | --- | --- | --- | --- |
 | Xfce + X11 | 原来的两个桌面小组件 | 歌单、半透明圆角频谱，自动定位屏幕右上角并置底 | 自动配置；已占用的键保留 |
-| KDE Plasma + X11 / Wayland | GTK / VTE 兼容播放器 | 歌单与粉色频谱同窗，可以移动、缩放 | 应用菜单及控制按钮；全局键在 KDE 设置中分配 |
+| KDE Plasma + Wayland | GTK Layer Shell 桌面组件 | 右上角、透明圆角、底层、不可拖拽；无标题栏和工具栏 | 歌单键盘操作及应用菜单；全局键在 KDE 设置中分配 |
+| KDE Plasma + X11 | GTK / VTE 兼容播放器 | 歌单与频谱同窗，可移动缩放 | 应用菜单及控制按钮 |
 | GNOME + X11 / Wayland | GTK / VTE 兼容播放器 | 歌单与粉色频谱同窗，可以移动、缩放 | 检测到 GNOME 快捷键接口时自动配置；锁定或冲突时跳过 |
 | Xfce + Wayland / 其他图形桌面 | GTK / VTE 兼容播放器 | 普通可移动窗口 | 以应用菜单和窗口按钮为准 |
 
@@ -168,3 +169,7 @@ dbus-run-session -- python3 tests/smoke_player.py
 ```
 
 兼容窗口使用 [GTK/VTE 的进程启动接口](https://gnome.pages.gitlab.gnome.org/vte/gtk3/method.Terminal.spawn_async.html) 和 [GApplication 单实例命令分发](https://docs.gtk.org/gio/flags.ApplicationFlags.html)。
+
+### KDE Wayland 外观更新
+
+旧版本的带按钮兼容窗口与 XFCE 桌面外观不同。更新后，KDE Wayland 使用 gtk-layer-shell 固定到右上角，以桌面底层显示；安装器自动补齐依赖。执行 `git pull --ff-only` 后运行 `bash install.sh`。需要原生 Wayland GTK 后端，勿设置 `GDK_BACKEND=x11`。KDE X11 和 GNOME 仍使用兼容窗口。此分支尚需真实 KDE Wayland 验收，缩放比例及字体可能影响实际尺寸。
