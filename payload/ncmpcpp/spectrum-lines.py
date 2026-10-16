@@ -9,20 +9,16 @@ class Spectrum(Gtk.Window):
  def __init__(self):
   super().__init__(title='MusicWidgetSpectrum')
   self.set_wmclass('MusicWidgetSpectrum','MusicWidgetSpectrum')
-  self.set_decorated(False);self.set_keep_above(True);self.set_skip_taskbar_hint(True)
+  self.set_decorated(False);self.set_keep_below(True);self.set_skip_taskbar_hint(True)
   self.set_default_size(182,164);self.set_app_paintable(True)
   vis=self.get_screen().get_rgba_visual()
   if vis:self.set_visual(vis)
   self.connect('draw',self.draw);self.connect('destroy',self.close)
-  self.add_events(Gdk.EventMask.BUTTON_PRESS_MASK)
-  self.connect('button-press-event',self.drag)
   env=os.environ.copy();env.pop('LD_LIBRARY_PATH',None)
   self.proc=subprocess.Popen(['/usr/bin/cava','-p',ROOT+'cava-lines.conf'],stdout=subprocess.PIPE,stderr=subprocess.DEVNULL,env=env)
   os.set_blocking(self.proc.stdout.fileno(),False)
   self.buf=b'';self.values=[0.0]*30;self.target=[0.0]*30
   GLib.timeout_add(16,self.tick)
- def drag(self,widget,event):
-  if event.button==1:self.begin_move_drag(event.button,int(event.x_root),int(event.y_root),event.time)
  def tick(self):
   try:
    while True:
