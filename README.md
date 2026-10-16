@@ -44,7 +44,7 @@ bash install.sh --no-launch
 | 环境 | 自动选择的界面 | 窗口效果 | 快捷键 |
 | --- | --- | --- | --- |
 | Xfce + X11 | 原来的两个桌面小组件 | 歌单、半透明圆角频谱，自动定位屏幕右上角并置底 | 自动配置；已占用的键保留 |
-| KDE Plasma + Wayland | GTK Layer Shell 桌面组件 | 右上角、透明圆角、底层、不可拖拽；无标题栏和工具栏 | Ctrl+Alt+M 显示/隐藏；其他控制键可自行分配 |
+| KDE Plasma + Wayland | GTK Layer Shell 桌面组件 | 右上角、透明圆角、底层、不可拖拽；无标题栏和工具栏 | Ctrl+Shift+F12 显示/隐藏；其他控制键可自行分配 |
 | KDE Plasma + X11 | GTK / VTE 兼容播放器 | 歌单与频谱同窗，可移动缩放 | 应用菜单及控制按钮 |
 | GNOME + X11 / Wayland | GTK / VTE 兼容播放器 | 歌单与粉色频谱同窗，可以移动、缩放 | 检测到 GNOME 快捷键接口时自动配置；锁定或冲突时跳过 |
 | Xfce + Wayland / 其他图形桌面 | GTK / VTE 兼容播放器 | 普通可移动窗口 | 以应用菜单和窗口按钮为准 |
@@ -60,16 +60,16 @@ Wayland 模式不调用 `xdotool`、`xrandr` 或 `xprop`，也不要求安装 XF
 | 命令 | 功能 | Xfce/X11、支持的 GNOME 默认快捷键 |
 | --- | --- | --- |
 | `~/.local/bin/music` | 扫描并补全队列，显示窗口，有歌曲时播放 | 无 |
-| `~/.local/bin/music ui-toggle` | 显示/隐藏，不改变播放状态 | `Ctrl+Alt+M` |
-| `~/.local/bin/music toggle` | 播放 / 暂停 | `Ctrl+Alt+P` |
-| `~/.local/bin/music prev` | 上一首 | `Ctrl+Alt+,` |
-| `~/.local/bin/music next` | 下一首 | `Ctrl+Alt+.` |
+| `~/.local/bin/music ui-toggle` | 显示/隐藏，不改变播放状态 | `Ctrl+Shift+F12` |
+| `~/.local/bin/music toggle` | 播放 / 暂停 | `Ctrl+Shift+F11` |
+| `~/.local/bin/music prev` | 上一首 | `Ctrl+Shift+F9` |
+| `~/.local/bin/music next` | 下一首 | `Ctrl+Shift+F10` |
 | `~/.local/bin/music hide` | 关闭播放器窗口，继续播放 | `（取消独立隐藏快捷键）` |
 | `~/.local/bin/music stop` | 暂停并关闭窗口 | — |
 
 如果 `~/.local/bin` 已加入 PATH，可以直接使用 `music`。服务随登录启动，以后登录不会自动弹出窗口或主动开始播放。
 
-KDE 自动注册 Ctrl+Alt+M 显示/隐藏；其他播放控制快捷键可在系统设置中分配。注册使用标准桌面文件，不直接改写 KGlobalAccel 私有配置。应用菜单仍保留播放控制入口。
+KDE 自动注册 Ctrl+Shift+F12 显示/隐藏；其他播放控制快捷键可在系统设置中分配。注册使用标准桌面文件，不直接改写 KGlobalAccel 私有配置。应用菜单仍保留播放控制入口。
 
 ### 歌单内操作
 
@@ -154,7 +154,7 @@ python3 /完整备份目录/restore.py
 - **音频检查失败**：先确认桌面上的其他应用能发声，运行 `pactl info` 查看 PipeWire/PulseAudio 是否工作。
 - **服务启动失败**：查看 `systemctl --user status mpd music-library-sync` 以及 `journalctl --user -u mpd -u music-library-sync -n 60`。已有其他 MPD 占用 6600 端口时需先处理冲突。
 - **兼容播放器未出现**：查看上表的 `player.log`；确认使用已登录的图形桌面，不是 SSH 或 TTY。
-- **快捷键无反应**：检查桌面冲突；KDE 若 Ctrl+Alt+M 已被其他操作占用，需在系统设置解决冲突；旧版本可能需要重新登录使注册生效。
+- **快捷键无反应**：检查桌面冲突；KDE 若 Ctrl+Shift+F12 已被其他操作占用，需在系统设置解决冲突；旧版本可能需要重新登录使注册生效。
 - **没有歌曲**：将支持的本地音频放入 `~/Music`，再运行 `music`。新电脑不会带来旧机器的音乐。
 
 ## 七、验证范围
@@ -177,4 +177,8 @@ dbus-run-session -- python3 tests/smoke_player.py
 
 ### 统一显示/隐藏快捷键
 
-`Ctrl+Alt+M` 执行 `music ui-toggle`：显示时隐藏，隐藏时显示，不改变播放/暂停状态。旧 Ctrl+Alt+H 不再安装；XFCE/GNOME 的旧套件绑定自动取消。KDE 使用标准桌面快捷键注册（X-KDE-Shortcuts），刷新应用缓存；若按键已有其他占用，需在 KDE 快捷键设置中解除冲突。手动添加过的旧 H 绑定需自行删除。`music` 仍用于扫描并播放，`music toggle` 仍为播放/暂停。
+`Ctrl+Shift+F12` 执行 `music ui-toggle`：显示时隐藏，隐藏时显示，不改变播放/暂停状态。旧 Ctrl+Alt+H 不再安装；XFCE/GNOME 的旧套件绑定自动取消。KDE 使用标准桌面快捷键注册（X-KDE-Shortcuts），刷新应用缓存；若按键已有其他占用，需在 KDE 快捷键设置中解除冲突。手动添加过的旧 H 绑定需自行删除。`music` 仍用于扫描并播放，`music toggle` 仍为播放/暂停。
+
+### F9～F12 快捷键更新
+
+统一使用 Ctrl+Shift+F12 显示/隐藏、Ctrl+Shift+F11 播放/暂停、Ctrl+Shift+F10 下一首、Ctrl+Shift+F9 上一首。XFCE/GNOME 自动移除本套件的旧字母绑定；KDE 移除旧套件快捷键入口并注册四个新入口。用户自行添加的 KDE 旧快捷键需在系统设置中取消。若功能键被硬件设为多媒体键，可能需要 Fn。
