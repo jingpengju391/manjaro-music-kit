@@ -1,14 +1,19 @@
 #!/usr/bin/env bash
 set -euo pipefail
 cd -- "$(dirname -- "${BASH_SOURCE[0]}")"
-if [[ "${1:-}" == "--dry-run" ]]; then
-  exec python3 install.py --dry-run
+if [[ $EUID == 0 ]]; then echo '请以桌面普通用户运行，不要 sudo 整个脚本。' >&2; exit 1; fi
+check=false
+for arg in "$@"; do
+  case "$arg" in --check|--dry-run|--help|-h|--restore|--restore=*|--list-backups) check=true;; esac
+done
+if ! command -v python3 >/dev/null; then
+  if [[ $check == true ]]; then echo '缺少 Python；请先安装 python。未修改系统。' >&2; exit 1; fi
+  command -v pacman >/dev/null || { echo '此安装器面向 Manjaro / Arch Linux。' >&2; exit 1; }
+  echo '需要安装 Python；pacman 将完整升级系统并请求确认。'
+  sudo pacman -Syu --needed python
 fi
-if [[ $EUID == 0 ]]; then echo '请以桌面普通用户运行，不要 sudo 整个脚本。'; exit 1; fi
-if [[ "${XDG_SESSION_TYPE:-x11}" != x11 ]]; then echo '此界面需要 X11，请登录 XFCE/X11 会话后安装。'; exit 1; fi
-command -v pacman >/dev/null || { echo '此安装器面向 Manjaro / Arch Linux。'; exit 1; }
-packages=(mpd ncmpcpp cava python python-gobject python-cairo gtk3 xfce4-terminal xdotool xorg-xprop xorg-xrandr libx11 libxext dbus xfconf)
-missing=()
-for p in "${packages[@]}"; do pacman -Q "$p" >/dev/null 2>&1 || missing+=("$p"); done
-if ((${#missing[@]})); then sudo pacman -S --needed "${missing[@]}"; fi
-exec python3 install.py
+if ! python3 -c 'import argparse, datetime, json, math, pathlib, shutil, subprocess'; then
+  echo 'Python/系统库无法加载，尚未写入音乐配置。请先完成系统升级：sudo pacman -Syu glibc python，重启后再运行。' >&2
+  exit 1
+fi
+exec python3 install.py "$@"

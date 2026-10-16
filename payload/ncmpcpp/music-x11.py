@@ -1,0 +1,80 @@
+#!/usr/bin/python3
+import os,re,socket,subprocess as sp,time,sys
+from pathlib import Path
+ROOT=Path('@HOME@/.config/ncmpcpp')
+def run(*a,**kw): return sp.run(a,text=True,stdout=sp.PIPE,stderr=sp.DEVNULL,**kw)
+def ids(role): return run('xdotool','search','--name','^'+role+'$').stdout.split()
+def mpd(cmd):
+ with socket.create_connection(('127.0.0.1',6600),timeout=4) as s:
+  f=s.makefile('rwb',buffering=0); f.readline(); f.write((cmd+'\n').encode()); lines=[]
+  while True:
+   line=f.readline().decode().strip()
+   if line=='OK':return lines
+   if not line or line.startswith('ACK'): raise RuntimeError(line)
+   lines.append(line)
+if len(sys.argv)>1 and sys.argv[1] in ['toggle','next','prev']:
+ sp.run(['systemctl','--user','start','mpd'],check=True)
+ action=sys.argv[1]
+ if action=='toggle':
+  playing='state: play' in mpd('status')
+  mpd('pause 1' if playing else 'play')
+ else:mpd('next' if action=='next' else 'previous')
+ sys.exit()
+roles=['MusicWidgetSpectrum','MusicWidgetPlaylist']
+if len(sys.argv)>1 and sys.argv[1] in ['hide','stop']:
+ for role in roles:
+  for w in ids(role):run('xdotool','windowclose',w)
+ if sys.argv[1]=='stop':mpd('pause 1')
+ sys.exit()
+sp.run(['systemctl','--user','start','mpd'],check=True)
+mpd('update')
+# Refresh the queue with newly discovered local tracks without duplicates.
+for _ in range(100):
+ if not any(x.startswith('updating_db:') for x in mpd('status')):break
+ time.sleep(.1)
+sp.run(['/usr/bin/python3',str(ROOT/'sync-library.py'),'--once'],check=True)
+mpd('play') if any(x.startswith('file: ') for x in mpd('playlistinfo')) else None
+mon=run('xrandr','--listmonitors').stdout
+matches=re.findall(r'(\d+)/\d+x(\d+)/\d+([+-]\d+)([+-]\d+)\s+(\S+)',mon)
+if not matches:sys.exit('未找到 X11 显示器，请在桌面终端运行。')
+m=next((v for v in matches if v[4].startswith(('eDP','LVDS'))),matches[0])
+w,h,x,y=map(int,m[:4]); right=x+w-10; top=y+10
+for role,cfg,width,left in [(roles[0],'widget-spectrum.conf',182,right-182-10-370),(roles[1],'widget-playlist.conf',370,right-370)]:
+ wins=ids(role)
+ if not wins:
+  env=os.environ.copy();env['XDG_CONFIG_HOME']=str(ROOT/'widget-terminal');env['TERM']='xterm-256color'
+  if role == roles[0]:
+   sp.Popen(['/usr/bin/python3',str(ROOT/'spectrum-lines.py')],stdout=sp.DEVNULL,stderr=sp.DEVNULL,start_new_session=True)
+  else:
+   sp.Popen(['dbus-run-session','--','xfce4-terminal','--disable-server','--class='+role,'--title='+role,'--dynamic-title-mode=none','--hide-menubar','--hide-toolbar','--hide-scrollbar','--hide-borders','--geometry=50x11','--command=env DBUS_SESSION_BUS_ADDRESS='+os.environ.get('DBUS_SESSION_BUS_ADDRESS','')+(' '+str(ROOT/'launch-spectrum.sh') if role == roles[0] else ' /usr/bin/python3 '+str(ROOT/'playlist-widget.py'))],env=env,stdout=sp.DEVNULL,stderr=sp.DEVNULL,start_new_session=True)
+  for _ in range(50):
+   time.sleep(.1);wins=ids(role)
+   if wins:break
+ for win in wins:
+  run('xdotool','windowsize','--sync',win,str(width),'170')
+  geom=dict(line.split('=',1) for line in run('xdotool','getwindowgeometry','--shell',win).stdout.splitlines())
+  actual_width=int(geom['WIDTH'])
+  placed_left=(right-370-10-actual_width) if role == roles[0] else (right-actual_width)
+  run('xdotool','windowmove',win,str(placed_left),str(top))
+  run('xdotool','windowstate','--remove','ABOVE',win)
+  run('xdotool','windowstate','--add','BELOW',win)
+  run('xdotool','windowstate','--add','SKIP_TASKBAR',win)
+  run('xprop','-id',win,'-f','_MOTIF_WM_HINTS','32c','-set','_MOTIF_WM_HINTS','3, 32, 0, 0, 0')
+  run('xdotool','windowmap',win)
+  run('xdotool','windowlower',win)
+  run('python3',str(ROOT/'round-window.py'),win)
+# Align after the terminal has applied its character-cell size increments.
+time.sleep(.15)
+windows=[ids(role) for role in roles]
+if all(windows):
+ spectrum,playlist=windows[0][0],windows[1][0]
+ def geometry(win):
+  return dict(line.split('=',1) for line in run('xdotool','getwindowgeometry','--shell',win).stdout.splitlines())
+ pg=geometry(playlist); sg=geometry(spectrum)
+ px=right-int(pg['WIDTH'])
+ run('xdotool','windowmove',playlist,str(px),str(top))
+ run('xdotool','windowsize',spectrum,sg['WIDTH'],pg['HEIGHT'])
+ run('xdotool','windowmove',spectrum,str(px-10-int(sg['WIDTH'])),str(top))
+ time.sleep(.05)
+ for win in [spectrum,playlist]:run('python3',str(ROOT/'round-window.py'),win)
+print('音乐已播放；右上角显示频谱和列表。music hide 隐藏，music stop 暂停并关闭。')

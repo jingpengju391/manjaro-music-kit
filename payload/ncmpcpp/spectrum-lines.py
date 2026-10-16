@@ -54,6 +54,7 @@ class Spectrum(Gtk.Window):
   return False
  def close(self,*args):
   self.proc.terminate();Gtk.main_quit()
-win=Spectrum();win.show_all()
-signal.signal(signal.SIGTERM,lambda *args:win.destroy())
-Gtk.main()
+if __name__ == '__main__':
+ win=Spectrum();win.show_all()
+ signal.signal(signal.SIGTERM,lambda *args:win.destroy())
+ Gtk.main()
