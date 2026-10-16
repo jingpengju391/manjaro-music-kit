@@ -28,8 +28,8 @@ def mpd(command):
 
 def main():
     action = sys.argv[1] if len(sys.argv) > 1 else 'show'
-    if action not in ('show', 'toggle', 'prev', 'next', 'hide', 'stop'):
-        raise SystemExit('用法：music [show|toggle|prev|next|hide|stop]')
+    if action not in ('show', 'ui-toggle', 'toggle', 'prev', 'next', 'hide', 'stop'):
+        raise SystemExit('用法：music [show|ui-toggle|toggle|prev|next|hide|stop]')
     _, session, backend = detect()
     if backend == 'xfce-x11':
         os.execv('/usr/bin/python3', ['python3', str(ROOT/'music-x11.py'), *sys.argv[1:]])
@@ -55,11 +55,11 @@ def main():
         if not any(x.startswith('updating_db:') for x in mpd('status')): break
         time.sleep(.1)
     sp.run(['/usr/bin/python3', str(ROOT/'sync-library.py'), '--once'], check=True)
-    if any(x.startswith('file: ') for x in mpd('playlistinfo')): mpd('play')
+    if action != 'ui-toggle' and any(x.startswith('file: ') for x in mpd('playlistinfo')): mpd('play')
     log = Path.home()/'.local/state/manjaro-music-kit/player.log'
     log.parent.mkdir(parents=True, exist_ok=True)
     with log.open('a') as stream:
-        process = sp.Popen(['/usr/bin/python3', str(ROOT/'portable-player.py'), 'show'],
+        process = sp.Popen(['/usr/bin/python3', str(ROOT/'portable-player.py'), action],
                            stdout=stream, stderr=stream, start_new_session=True)
         try:
             code = process.wait(timeout=.8)

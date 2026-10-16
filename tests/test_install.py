@@ -96,7 +96,7 @@ class InstallerTests(unittest.TestCase):
             def write(args, **kwargs):
                 records = json.loads((b.path/'manifest.json').read_text())['settings']
                 if args[3] == 'custom-keybindings':
-                    self.assertEqual(len(records), 16)
+                    self.assertEqual(len(records), 13)
                 else:
                     self.assertTrue(records[-1]['path'].endswith('/'+args[3]))
                 return subprocess.CompletedProcess(args, 0)

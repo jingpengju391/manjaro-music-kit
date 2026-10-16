@@ -44,7 +44,7 @@ bash install.sh --no-launch
 | 环境 | 自动选择的界面 | 窗口效果 | 快捷键 |
 | --- | --- | --- | --- |
 | Xfce + X11 | 原来的两个桌面小组件 | 歌单、半透明圆角频谱，自动定位屏幕右上角并置底 | 自动配置；已占用的键保留 |
-| KDE Plasma + Wayland | GTK Layer Shell 桌面组件 | 右上角、透明圆角、底层、不可拖拽；无标题栏和工具栏 | 歌单键盘操作及应用菜单；全局键在 KDE 设置中分配 |
+| KDE Plasma + Wayland | GTK Layer Shell 桌面组件 | 右上角、透明圆角、底层、不可拖拽；无标题栏和工具栏 | Ctrl+Alt+M 显示/隐藏；其他控制键可自行分配 |
 | KDE Plasma + X11 | GTK / VTE 兼容播放器 | 歌单与频谱同窗，可移动缩放 | 应用菜单及控制按钮 |
 | GNOME + X11 / Wayland | GTK / VTE 兼容播放器 | 歌单与粉色频谱同窗，可以移动、缩放 | 检测到 GNOME 快捷键接口时自动配置；锁定或冲突时跳过 |
 | Xfce + Wayland / 其他图形桌面 | GTK / VTE 兼容播放器 | 普通可移动窗口 | 以应用菜单和窗口按钮为准 |
@@ -59,16 +59,17 @@ Wayland 模式不调用 `xdotool`、`xrandr` 或 `xprop`，也不要求安装 XF
 
 | 命令 | 功能 | Xfce/X11、支持的 GNOME 默认快捷键 |
 | --- | --- | --- |
-| `~/.local/bin/music` | 扫描并补全队列，显示窗口，有歌曲时播放 | `Ctrl+Alt+M` |
+| `~/.local/bin/music` | 扫描并补全队列，显示窗口，有歌曲时播放 | 无 |
+| `~/.local/bin/music ui-toggle` | 显示/隐藏，不改变播放状态 | `Ctrl+Alt+M` |
 | `~/.local/bin/music toggle` | 播放 / 暂停 | `Ctrl+Alt+P` |
 | `~/.local/bin/music prev` | 上一首 | `Ctrl+Alt+,` |
 | `~/.local/bin/music next` | 下一首 | `Ctrl+Alt+.` |
-| `~/.local/bin/music hide` | 关闭播放器窗口，继续播放 | `Ctrl+Alt+H` |
+| `~/.local/bin/music hide` | 关闭播放器窗口，继续播放 | `（取消独立隐藏快捷键）` |
 | `~/.local/bin/music stop` | 暂停并关闭窗口 | — |
 
 如果 `~/.local/bin` 已加入 PATH，可以直接使用 `music`。服务随登录启动，以后登录不会自动弹出窗口或主动开始播放。
 
-KDE 不会写入 XFCE 快捷键设置，也不会直接改写 KGlobalAccel 的私有配置。可以先使用窗口上的控制按钮；如需全局快捷键，在 **系统设置 → 键盘 → 快捷键** 中添加上述命令（具体菜单名称随 Plasma 版本变化）。应用菜单还提供播放暂停、上一首、下一首及隐藏操作。
+KDE 自动注册 Ctrl+Alt+M 显示/隐藏；其他播放控制快捷键可在系统设置中分配。注册使用标准桌面文件，不直接改写 KGlobalAccel 私有配置。应用菜单仍保留播放控制入口。
 
 ### 歌单内操作
 
@@ -153,7 +154,7 @@ python3 /完整备份目录/restore.py
 - **音频检查失败**：先确认桌面上的其他应用能发声，运行 `pactl info` 查看 PipeWire/PulseAudio 是否工作。
 - **服务启动失败**：查看 `systemctl --user status mpd music-library-sync` 以及 `journalctl --user -u mpd -u music-library-sync -n 60`。已有其他 MPD 占用 6600 端口时需先处理冲突。
 - **兼容播放器未出现**：查看上表的 `player.log`；确认使用已登录的图形桌面，不是 SSH 或 TTY。
-- **快捷键无反应**：检查桌面冲突；KDE 使用窗口控制按钮或自行绑定全局键。
+- **快捷键无反应**：检查桌面冲突；KDE 若 Ctrl+Alt+M 已被其他操作占用，需在系统设置解决冲突；旧版本可能需要重新登录使注册生效。
 - **没有歌曲**：将支持的本地音频放入 `~/Music`，再运行 `music`。新电脑不会带来旧机器的音乐。
 
 ## 七、验证范围
@@ -173,3 +174,7 @@ dbus-run-session -- python3 tests/smoke_player.py
 ### KDE Wayland 外观更新
 
 旧版本的带按钮兼容窗口与 XFCE 桌面外观不同。更新后，KDE Wayland 使用 gtk-layer-shell 固定到右上角，以桌面底层显示；安装器自动补齐依赖。执行 `git pull --ff-only` 后运行 `bash install.sh`。需要原生 Wayland GTK 后端，勿设置 `GDK_BACKEND=x11`。KDE X11 和 GNOME 仍使用兼容窗口。此分支尚需真实 KDE Wayland 验收，缩放比例及字体可能影响实际尺寸。
+
+### 统一显示/隐藏快捷键
+
+`Ctrl+Alt+M` 执行 `music ui-toggle`：显示时隐藏，隐藏时显示，不改变播放/暂停状态。旧 Ctrl+Alt+H 不再安装；XFCE/GNOME 的旧套件绑定自动取消。KDE 使用标准桌面快捷键注册（X-KDE-Shortcuts），刷新应用缓存；若按键已有其他占用，需在 KDE 快捷键设置中解除冲突。手动添加过的旧 H 绑定需自行删除。`music` 仍用于扫描并播放，`music toggle` 仍为播放/暂停。

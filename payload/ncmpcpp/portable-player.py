@@ -96,12 +96,15 @@ class Player(Gtk.Application):
     def do_command_line(self, command):
         if 'hide' in command.get_arguments()[1:]:
             self.quit()
+        elif 'ui-toggle' in command.get_arguments()[1:] and self.window and self.window.get_visible():
+            self.window.hide()
         else:
             self.activate()
         return 0
 
     def do_activate(self):
         if self.window:
+            self.window.show_all()
             self.window.present()
             return
         Gtk.Settings.get_default().set_property('gtk-application-prefer-dark-theme', True)

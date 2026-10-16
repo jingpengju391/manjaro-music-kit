@@ -43,6 +43,14 @@ with tempfile.TemporaryDirectory(prefix='music-kit-smoke-') as directory:
             assert app.child_pid, 'VTE playlist did not spawn'
             assert app.bars.proc.poll() is None, 'spectrum process exited early'
             assert any(app.bars.values), 'spectrum frames not consumed'
+            class ToggleCommand:
+                def get_arguments(self): return ['music', 'ui-toggle']
+            pid = app.child_pid
+            app.do_command_line(ToggleCommand())
+            assert not app.window.get_visible(), 'toggle did not hide'
+            app.do_command_line(ToggleCommand())
+            assert app.window.get_visible(), 'toggle did not show'
+            assert app.child_pid == pid, 'toggle restarted playlist'
             window = app.window.get_window()
             pixbuf = player.Gdk.pixbuf_get_from_window(window, 0, 0, app.window.get_allocated_width(), app.window.get_allocated_height())
             pixbuf.savev('/tmp/music-kit-smoke.png', 'png', [], [])

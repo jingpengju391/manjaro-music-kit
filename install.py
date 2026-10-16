@@ -19,9 +19,14 @@ def command(*args):
 
 
 def shortcuts(desktop, home, backup):
-    actions = [('m', '', '打开音乐'), ('p', 'toggle', '播放暂停'), ('comma', 'prev', '上一首'),
-               ('period', 'next', '下一首'), ('h', 'hide', '隐藏音乐')]
+    actions = [('m', 'ui-toggle', '显示/隐藏音乐'), ('p', 'toggle', '播放暂停'), ('comma', 'prev', '上一首'),
+               ('period', 'next', '下一首')]
     if desktop == 'Xfce':
+        legacy = '/commands/custom/<Primary><Alt>h'
+        old = subprocess.run(['xfconf-query', '-c', 'xfce4-keyboard-shortcuts', '-p', legacy], capture_output=True, text=True)
+        if old.returncode == 0 and str(home/'.local/bin/music') in old.stdout:
+            backup.setting({'type': 'xfconf', 'path': legacy, 'value': old.stdout.strip()})
+            subprocess.run(['xfconf-query', '-c', 'xfce4-keyboard-shortcuts', '-p', legacy, '-r'], check=True)
         for key, action, label in actions:
             path = '/commands/custom/<Primary><Alt>' + key
             old = subprocess.run(['xfconf-query', '-c', 'xfce4-keyboard-shortcuts', '-p', path], capture_output=True, text=True)
@@ -41,6 +46,8 @@ def shortcuts(desktop, home, backup):
         if command('gsettings', 'writable', schema, 'custom-keybindings') != 'true':
             print('GNOME 快捷键被系统策略锁定，跳过。'); return
         backup.setting({'type': 'dconf', 'path': base+'custom-keybindings', 'value': command('dconf', 'read', base+'custom-keybindings')})
+        legacy = base + 'custom-keybindings/manjaro-music-kit-h/'
+        paths = [path for path in paths if path != legacy]
         for key, action, label in actions:
             path = base + 'custom-keybindings/manjaro-music-kit-' + key + '/'
             custom = 'org.gnome.settings-daemon.plugins.media-keys.custom-keybinding:'
@@ -54,8 +61,18 @@ def shortcuts(desktop, home, backup):
                 subprocess.run(['gsettings', 'set', custom+path, k, v], check=True)
             if path not in paths: paths.append(path)
         subprocess.run(['gsettings', 'set', schema, 'custom-keybindings', repr(paths)], check=True)
+    elif desktop == 'KDE Plasma':
+        data = Path(os.environ.get('XDG_DATA_HOME', str(home/'.local/share')))
+        entry = ('[Desktop Entry]\nType=Application\nName=显示或隐藏桌面音乐\n'
+                 f'Exec="{home}/.local/bin/music" ui-toggle\n'
+                 'Icon=multimedia-player\nTerminal=false\nX-KDE-Shortcuts=Ctrl+Alt+M\n')
+        for folder in ('applications', 'kglobalaccel'):
+            backup.write(data/folder/'manjaro-music-visibility.desktop', entry, True)
+        builder = shutil.which('kbuildsycoca6') or shutil.which('kbuildsycoca5')
+        if builder: subprocess.run([builder], check=True)
+        print('已注册 Ctrl+Alt+M 显示/隐藏；若 KDE 已占用此键，请在系统设置中解决冲突。')
     else:
-        print('KDE/其他桌面：应用菜单已提供播放器及播放控制；全局快捷键请在系统设置中按需分配，不改写 KGlobalAccel 私有配置。')
+        print('其他桌面：应用菜单已提供播放器及播放控制；全局快捷键请在系统设置中按需分配，不改写 KGlobalAccel 私有配置。')
 
 
 def main():

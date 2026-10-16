@@ -21,7 +21,7 @@ if len(sys.argv)>1 and sys.argv[1] in ['toggle','next','prev']:
  else:mpd('next' if action=='next' else 'previous')
  sys.exit()
 roles=['MusicWidgetSpectrum','MusicWidgetPlaylist']
-if len(sys.argv)>1 and sys.argv[1] in ['hide','stop']:
+if len(sys.argv)>1 and (sys.argv[1] in ['hide','stop'] or (sys.argv[1]=='ui-toggle' and any(ids(role) for role in roles))):
  for role in roles:
   for w in ids(role):run('xdotool','windowclose',w)
  if sys.argv[1]=='stop':mpd('pause 1')
@@ -33,7 +33,7 @@ for _ in range(100):
  if not any(x.startswith('updating_db:') for x in mpd('status')):break
  time.sleep(.1)
 sp.run(['/usr/bin/python3',str(ROOT/'sync-library.py'),'--once'],check=True)
-mpd('play') if any(x.startswith('file: ') for x in mpd('playlistinfo')) else None
+mpd('play') if 'ui-toggle' not in sys.argv and any(x.startswith('file: ') for x in mpd('playlistinfo')) else None
 mon=run('xrandr','--listmonitors').stdout
 matches=re.findall(r'(\d+)/\d+x(\d+)/\d+([+-]\d+)([+-]\d+)\s+(\S+)',mon)
 if not matches:sys.exit('未找到 X11 显示器，请在桌面终端运行。')
