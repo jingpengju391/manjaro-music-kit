@@ -22,17 +22,15 @@ def shortcuts(desktop, home, backup):
     actions = [('m', 'ui-toggle', '显示/隐藏音乐'), ('o', 'toggle', '播放暂停'),
                ('comma', 'prev', '上一首'), ('period', 'next', '下一首')]
     if desktop == 'Xfce':
-        for legacy in ['/commands/custom/<Primary><Alt>'+k for k in ('p','h')] + ['/commands/custom/<Primary><Shift>'+k for k in ('F9','F10','F11','F12')]:
-            old = subprocess.run(['xfconf-query', '-c', 'xfce4-keyboard-shortcuts', '-p', legacy], capture_output=True, text=True)
-            if old.returncode == 0 and str(home/'.local/bin/music') in old.stdout:
-                backup.setting({'type': 'xfconf', 'path': legacy, 'value': old.stdout.strip()})
-                subprocess.run(['xfconf-query', '-c', 'xfce4-keyboard-shortcuts', '-p', legacy, '-r'], check=True)
+        # Do not remove shortcuts left by an older version of this kit.  Their
+        # command still targets the stable launcher below, so keeping them is
+        # both the migration path and the least surprising choice for users.
         for key, action, label in actions:
             path = '/commands/custom/<Primary><Alt>' + key
             old = subprocess.run(['xfconf-query', '-c', 'xfce4-keyboard-shortcuts', '-p', path], capture_output=True, text=True)
             # Never overwrite someone else's shortcut silently.
             value = shlex.join([str(home/'.local/bin/music')] + ([action] if action else []))
-            if old.returncode == 0 and str(home/'.local/bin/music') not in old.stdout:
+            if old.returncode == 0:
                 print('保留已有快捷键：', key); continue
             backup.setting({'type': 'xfconf', 'path': path, 'value': old.stdout.strip() if old.returncode == 0 else None})
             subprocess.run(['xfconf-query', '-c', 'xfce4-keyboard-shortcuts', '-p', path, '--create', '-t', 'string', '-s', value], check=True)
@@ -46,12 +44,15 @@ def shortcuts(desktop, home, backup):
         if command('gsettings', 'writable', schema, 'custom-keybindings') != 'true':
             print('GNOME 快捷键被系统策略锁定，跳过。'); return
         backup.setting({'type': 'dconf', 'path': base+'custom-keybindings', 'value': command('dconf', 'read', base+'custom-keybindings')})
-        legacy = {base + 'custom-keybindings/manjaro-music-kit-' + key + '/' for key in ('p','h','F9','F10','F11','F12')}
-        paths = [path for path in paths if path not in legacy]
+        # Keep legacy manjaro-music-kit entries in the list.  They invoke the
+        # stable launcher and are therefore user shortcuts to migrate, not
+        # obsolete state to discard.
         for key, action, label in actions:
             path = base + 'custom-keybindings/manjaro-music-kit-' + key + '/'
             custom = 'org.gnome.settings-daemon.plugins.media-keys.custom-keybinding:'
             binding = '<Control><Alt>' + key
+            if path in paths:
+                print('保留已有 GNOME 快捷键：', binding); continue
             if any(command('gsettings', 'get', custom+p, 'binding').strip("'").replace('<Primary>', '<Control>') == binding for p in paths if p != path):
                 print('保留已有 GNOME 快捷键：', binding); continue
             values = {'name': label, 'command': shlex.join([str(home/'.local/bin/music')] + ([action] if action else [])), 'binding': binding}
@@ -63,21 +64,14 @@ def shortcuts(desktop, home, backup):
         subprocess.run(['gsettings', 'set', schema, 'custom-keybindings', repr(paths)], check=True)
     elif desktop == 'KDE Plasma':
         data = Path(os.environ.get('XDG_DATA_HOME', str(home/'.local/share')))
-        for folder in ('applications', 'kglobalaccel'):
-            for name in ['visibility','f9','f10','f11','f12']:
-                old = data/folder/f'manjaro-music-{name}.desktop'
-                if old.exists():
-                    backup.keep(old)
-                    old.unlink()
-            for key, action, label in actions:
-                kde_key = {'comma': ',', 'period': '.'}.get(key, key.upper())
-                entry = ('[Desktop Entry]\nType=Application\nName=' + label + '\n'
-                         f'Exec="{home}/.local/bin/music" {action}\n'
-                         f'Icon=multimedia-player\nTerminal=false\nX-KDE-Shortcuts=Ctrl+Alt+{kde_key}\n')
-                backup.write(data/folder/f'manjaro-music-{key.lower()}.desktop', entry, True)
-        builder = shutil.which('kbuildsycoca6') or shutil.which('kbuildsycoca5')
-        if builder: subprocess.run([builder], check=True)
-        print('已注册 Ctrl+Alt+M/O/逗号/句号；若 KDE 已占用这些键，请在系统设置中解决冲突。')
+        # KGlobalAccel has no stable public conflict-query interface.  Avoid
+        # registering new global keys: existing music entries remain usable,
+        # while the user's current KDE bindings always take precedence.
+        existing = list((data/'applications').glob('manjaro-music-*.desktop')) + list((data/'kglobalaccel').glob('manjaro-music-*.desktop'))
+        if existing:
+            print('保留已有 KDE 音乐快捷键：未注册会与其冲突的新快捷键。')
+        else:
+            print('KDE 未自动注册全局快捷键，以保留现有快捷键优先；可在系统设置中自行分配。')
     else:
         print('其他桌面：应用菜单已提供播放器及播放控制；全局快捷键请在系统设置中按需分配，不改写 KGlobalAccel 私有配置。')
 

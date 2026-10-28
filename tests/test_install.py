@@ -118,6 +118,37 @@ class InstallerTests(unittest.TestCase):
             with patch('install.command', side_effect=query), patch('install.subprocess.run', side_effect=write):
                 install.shortcuts('GNOME', home, b)
 
+    def test_xfce_existing_binding_wins_over_default(self):
+        with tempfile.TemporaryDirectory() as folder:
+            home = Path(folder)
+            b = backup.Backup(home, install.ROOT)
+            def query(args, **kwargs):
+                if args[-1] == '/commands/custom/<Primary><Alt>m':
+                    return subprocess.CompletedProcess(args, 0, '/old/music toggle\n', '')
+                return subprocess.CompletedProcess(args, 1, '', '')
+            with patch('install.subprocess.run', side_effect=query) as run:
+                install.shortcuts('Xfce', home, b)
+            writes = [call.args[0] for call in run.call_args_list if '--create' in call.args[0]]
+            self.assertFalse(any(command[-1].endswith('ui-toggle') for command in writes))
+
+    def test_gnome_existing_kit_entry_is_preserved(self):
+        with tempfile.TemporaryDirectory() as folder:
+            home = Path(folder)
+            b = backup.Backup(home, install.ROOT)
+            base = '/org/gnome/settings-daemon/plugins/media-keys/'
+            existing = base + 'custom-keybindings/manjaro-music-kit-m/'
+            def query(*args):
+                if args[:2] == ('gsettings', 'list-schemas'):
+                    return 'org.gnome.settings-daemon.plugins.media-keys'
+                if args[:2] == ('gsettings', 'writable'): return 'true'
+                if args[:2] == ('gsettings', 'get') and args[-1] == 'custom-keybindings': return repr([existing])
+                if args[:2] == ('gsettings', 'get'): return "'<Control><Alt>m'"
+                if args[:2] == ('dconf', 'read'): return ''
+                raise AssertionError(args)
+            with patch('install.command', side_effect=query), patch('install.subprocess.run', return_value=subprocess.CompletedProcess([], 0)) as run:
+                install.shortcuts('GNOME', home, b)
+            self.assertFalse(any(call.args[0][:3] == ['gsettings', 'set', 'org.gnome.settings-daemon.plugins.media-keys.custom-keybinding:'+existing] for call in run.call_args_list))
+
     def test_check_never_installs_or_creates_backup(self):
         with tempfile.TemporaryDirectory() as folder:
             home = Path(folder)
