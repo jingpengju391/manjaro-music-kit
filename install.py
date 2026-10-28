@@ -28,10 +28,9 @@ def shortcuts(desktop, home, backup):
         for key, action, label in actions:
             path = '/commands/custom/<Primary><Alt>' + key
             old = subprocess.run(['xfconf-query', '-c', 'xfce4-keyboard-shortcuts', '-p', path], capture_output=True, text=True)
-            # Never overwrite someone else's shortcut silently.
             value = shlex.join([str(home/'.local/bin/music')] + ([action] if action else []))
             if old.returncode == 0:
-                print('保留已有快捷键：', key); continue
+                print('迁移音乐快捷键，替换冲突绑定：', key)
             backup.setting({'type': 'xfconf', 'path': path, 'value': old.stdout.strip() if old.returncode == 0 else None})
             subprocess.run(['xfconf-query', '-c', 'xfce4-keyboard-shortcuts', '-p', path, '--create', '-t', 'string', '-s', value], check=True)
     elif desktop == 'GNOME':
@@ -51,10 +50,10 @@ def shortcuts(desktop, home, backup):
             path = base + 'custom-keybindings/manjaro-music-kit-' + key + '/'
             custom = 'org.gnome.settings-daemon.plugins.media-keys.custom-keybinding:'
             binding = '<Control><Alt>' + key
-            if path in paths:
-                print('保留已有 GNOME 快捷键：', binding); continue
-            if any(command('gsettings', 'get', custom+p, 'binding').strip("'").replace('<Primary>', '<Control>') == binding for p in paths if p != path):
-                print('保留已有 GNOME 快捷键：', binding); continue
+            conflicts = [p for p in paths if p != path and command('gsettings', 'get', custom+p, 'binding').strip("'").replace('<Primary>', '<Control>') == binding]
+            if conflicts:
+                print('迁移音乐快捷键，替换冲突绑定：', binding)
+                paths = [p for p in paths if p not in conflicts]
             values = {'name': label, 'command': shlex.join([str(home/'.local/bin/music')] + ([action] if action else [])), 'binding': binding}
             if any(command('gsettings', 'writable', custom+path, k) != 'true' for k in values): continue
             for k, v in values.items():

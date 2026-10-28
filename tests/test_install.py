@@ -118,7 +118,7 @@ class InstallerTests(unittest.TestCase):
             with patch('install.command', side_effect=query), patch('install.subprocess.run', side_effect=write):
                 install.shortcuts('GNOME', home, b)
 
-    def test_xfce_existing_binding_wins_over_default(self):
+    def test_xfce_music_binding_replaces_conflicting_default(self):
         with tempfile.TemporaryDirectory() as folder:
             home = Path(folder)
             b = backup.Backup(home, install.ROOT)
@@ -129,9 +129,9 @@ class InstallerTests(unittest.TestCase):
             with patch('install.subprocess.run', side_effect=query) as run:
                 install.shortcuts('Xfce', home, b)
             writes = [call.args[0] for call in run.call_args_list if '--create' in call.args[0]]
-            self.assertFalse(any(command[-1].endswith('ui-toggle') for command in writes))
+            self.assertTrue(any(command[-1].endswith('ui-toggle') for command in writes))
 
-    def test_gnome_existing_kit_entry_is_preserved(self):
+    def test_gnome_existing_kit_entry_is_updated(self):
         with tempfile.TemporaryDirectory() as folder:
             home = Path(folder)
             b = backup.Backup(home, install.ROOT)
@@ -147,7 +147,7 @@ class InstallerTests(unittest.TestCase):
                 raise AssertionError(args)
             with patch('install.command', side_effect=query), patch('install.subprocess.run', return_value=subprocess.CompletedProcess([], 0)) as run:
                 install.shortcuts('GNOME', home, b)
-            self.assertFalse(any(call.args[0][:3] == ['gsettings', 'set', 'org.gnome.settings-daemon.plugins.media-keys.custom-keybinding:'+existing] for call in run.call_args_list))
+            self.assertTrue(any(call.args[0][:3] == ['gsettings', 'set', 'org.gnome.settings-daemon.plugins.media-keys.custom-keybinding:'+existing] for call in run.call_args_list))
 
     def test_check_never_installs_or_creates_backup(self):
         with tempfile.TemporaryDirectory() as folder:
